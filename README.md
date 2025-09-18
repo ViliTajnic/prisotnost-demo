@@ -46,39 +46,154 @@ A full-featured workforce time management and scheduling application built with 
 - **Redis** - Session management and caching
 - **Prometheus/Grafana** - Monitoring (optional)
 
-## Quick Start
+## Installation
 
 ### Prerequisites
-- Docker and Docker Compose
-- Git
+- **Python 3.8+**
+- **Docker Desktop** (for Oracle Database 23ai)
+- **Git**
 
-### Installation
+### Step 1: Clone the Repository
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd claude-demo
-   ```
+```bash
+git clone https://github.com/ViliTajnic/prisotnost-demo.git
+cd prisotnost-demo
+```
 
-2. **Configure environment variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your configuration
-   ```
+### Step 2: Set Up Oracle Database 23ai
 
-3. **Start the application**
-   ```bash
-   docker-compose up -d
-   ```
+Start Oracle Database using Docker:
 
-4. **Access the application**
-   - Web Interface: http://localhost
-   - API Documentation: http://localhost/api/docs
-   - Admin Panel: http://localhost/admin
+```bash
+# Pull and run Oracle Database 23ai Free
+docker run -d \
+  --name oracle-23ai-free \
+  -p 1521:1521 \
+  -e ORACLE_PWD=OraclePassword123 \
+  container-registry.oracle.com/database/free:latest
 
-### Default Credentials
-- **Admin**: username: `admin`, password: `admin123`
-- **Employee**: username: `employee`, password: `emp123`
+# Wait for database to fully initialize (this may take 5-10 minutes)
+docker logs -f oracle-23ai-free
+```
+
+Wait until you see the message: `DATABASE IS READY TO USE!`
+
+### Step 3: Create Database User
+
+Connect to Oracle and create the application user:
+
+```bash
+# Option 1: Using Docker exec
+docker exec -it oracle-23ai-free sqlplus system/OraclePassword123@FREEPDB1
+
+# Option 2: Using Oracle SQL command line (if installed)
+sqlplus system/OraclePassword123@localhost:1521/FREEPDB1
+```
+
+Run these SQL commands:
+```sql
+-- Create timetracker user
+CREATE USER timetracker IDENTIFIED BY TimeTracker123 DEFAULT TABLESPACE USERS;
+GRANT CONNECT, RESOURCE, CREATE SESSION TO timetracker;
+GRANT UNLIMITED TABLESPACE TO timetracker;
+GRANT CREATE TABLE, CREATE VIEW, CREATE SEQUENCE TO timetracker;
+EXIT;
+```
+
+### Step 4: Set Up Python Environment
+
+```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate virtual environment
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+### Step 5: Configure Environment
+
+```bash
+# Copy example environment file
+cp .env.example .env
+```
+
+Edit `.env` file with your settings:
+```bash
+# Basic Configuration
+SECRET_KEY=your-secret-key-here-generate-a-random-string
+JWT_SECRET_KEY=your-jwt-secret-key-here-generate-a-random-string
+
+# Oracle Database Configuration
+DATABASE_URL=oracle+oracledb://timetracker:TimeTracker123@localhost:1521/?service_name=FREEPDB1
+ORACLE_HOST=localhost
+ORACLE_PORT=1521
+ORACLE_SERVICE=FREEPDB1
+ORACLE_USERNAME=timetracker
+ORACLE_PASSWORD=TimeTracker123
+
+# Organization Configuration
+ALLOWED_EMAIL_DOMAINS=yourdomain.com
+ORGANIZATION_NAME=Your Organization
+REQUIRE_ADMIN_APPROVAL=false
+ALLOW_SELF_REGISTRATION=true
+
+# Google OAuth (optional - get from Google Cloud Console)
+GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# Application Configuration
+FLASK_ENV=development
+FLASK_DEBUG=True
+```
+
+### Step 6: Run the Application
+
+```bash
+# Make sure virtual environment is activated
+source venv/bin/activate
+
+# Start the Flask application
+python app.py
+```
+
+The application will be available at: **http://localhost:5000**
+
+### Step 7: Create Admin User (Optional)
+
+```bash
+# Run the admin setup script (if available)
+python reset_admin.py
+```
+
+## Google OAuth Setup (Optional)
+
+To enable Google Sign-In:
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Enable the Google+ API
+4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client IDs"
+5. Set authorized redirect URIs:
+   - `http://localhost:5000/auth/google/callback`
+6. Copy Client ID and Client Secret to your `.env` file
+
+## Quick Start Commands
+
+```bash
+# Full setup from scratch
+git clone https://github.com/ViliTajnic/prisotnost-demo.git
+cd prisotnost-demo
+docker run -d --name oracle-23ai-free -p 1521:1521 -e ORACLE_PWD=OraclePassword123 container-registry.oracle.com/database/free:latest
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env file
+python app.py
+```
 
 ## Configuration
 
