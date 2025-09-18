@@ -395,9 +395,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ## Support
 
 For support and questions:
-- Documentation: [Project Wiki]
-- Issues: [GitHub Issues]
-- Email: support@timetracker.com
+- **Issues**: [GitHub Issues](https://github.com/ViliTajnic/prisotnost-demo/issues)
+- **Email**: vili.tajnic@gmail.com
+- **Author**: Vili Tajnic
 
 ## Roadmap
 
