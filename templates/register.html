@@ -1,0 +1,391 @@
+{% extends "base.html" %}
+
+{% block title %}Register - Time Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow">
+            <div class="card-header text-center bg-success text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-user-plus me-2"></i>Create Account
+                </h4>
+                <small>Join {{ config.get('ORGANIZATION_NAME', 'TimeTracker Pro') }}</small>
+            </div>
+            <div class="card-body">
+                <!-- Domain Restriction Notice -->
+                {% if config.get('ALLOWED_EMAIL_DOMAINS') %}
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Registration is limited to <strong>@{{ config.get('ALLOWED_EMAIL_DOMAINS').split(',')[0] }}</strong> email addresses.
+                </div>
+                {% endif %}
+
+                <form id="registerForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="firstName" class="form-label">First Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="firstName" name="first_name" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="lastName" class="form-label">Last Name</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-user"></i>
+                                    </span>
+                                    <input type="text" class="form-control" id="lastName" name="last_name" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-envelope"></i>
+                            </span>
+                            <input type="email" class="form-control" id="email" name="email" required>
+                            <button class="btn btn-outline-secondary" type="button" id="checkDomain">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                        <div class="form-text" id="emailHelp">
+                            {% if config.get('ALLOWED_EMAIL_DOMAINS') %}
+                            Must be a @{{ config.get('ALLOWED_EMAIL_DOMAINS').split(',')[0] }} email address
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="password" name="password" required>
+                            <button class="btn btn-outline-secondary" type="button" id="togglePassword">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                        <div class="form-text">
+                            Minimum 8 characters required
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm Password</label>
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="fas fa-lock"></i>
+                            </span>
+                            <input type="password" class="form-control" id="confirmPassword" name="confirm_password" required>
+                        </div>
+                    </div>
+
+                    {% if config.get('REQUIRE_ADMIN_APPROVAL', '').lower() == 'true' %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-clock me-2"></i>
+                        <strong>Admin Approval Required:</strong> Your account will be reviewed by an administrator before activation.
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid mb-3">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-user-plus me-2"></i>Create Account
+                        </button>
+                    </div>
+                </form>
+
+                <hr>
+
+                <!-- OAuth Sign-In Options -->
+                <div class="text-center mb-3">
+                    <p class="text-muted mb-3">Or sign up with:</p>
+
+                    <div class="d-grid gap-2">
+                        <button type="button" class="btn btn-outline-danger" onclick="signUpWithGoogle()">
+                            <i class="fab fa-google me-2"></i>Sign up with Google
+                        </button>
+                    </div>
+                </div>
+
+                <hr>
+
+                <div class="text-center">
+                    <span class="text-muted">Already have an account?</span>
+                    <a href="/login" class="text-decoration-none ms-1">
+                        Sign in here
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Verification Notice -->
+        <div class="card mt-3 border-warning d-none" id="verificationNotice">
+            <div class="card-header bg-warning text-dark">
+                <h6 class="mb-0">
+                    <i class="fas fa-envelope me-2"></i>Email Verification Required
+                </h6>
+            </div>
+            <div class="card-body">
+                <p class="mb-2">We've sent a verification email to your address. Please check your inbox and click the verification link.</p>
+                <button class="btn btn-sm btn-outline-warning" onclick="resendVerification()">
+                    <i class="fas fa-redo me-1"></i>Resend Email
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const registerForm = document.getElementById('registerForm');
+    const togglePassword = document.getElementById('togglePassword');
+    const passwordInput = document.getElementById('password');
+    const confirmPasswordInput = document.getElementById('confirmPassword');
+    const checkDomainBtn = document.getElementById('checkDomain');
+    const emailInput = document.getElementById('email');
+
+    // Toggle password visibility
+    togglePassword.addEventListener('click', function() {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+        passwordInput.setAttribute('type', type);
+        confirmPasswordInput.setAttribute('type', type);
+
+        const icon = this.querySelector('i');
+        icon.className = type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+    });
+
+    // Check domain availability
+    checkDomainBtn.addEventListener('click', function() {
+        const email = emailInput.value.trim();
+        if (!email) {
+            showAlert('Please enter an email address', 'warning');
+            return;
+        }
+
+        const originalIcon = this.querySelector('i').className;
+        this.querySelector('i').className = 'fas fa-spinner fa-spin';
+        this.disabled = true;
+
+        fetch('/check-domain', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email: email })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.valid) {
+                showAlert('Email domain is valid!', 'success');
+                emailInput.classList.add('is-valid');
+                emailInput.classList.remove('is-invalid');
+            } else {
+                showAlert(data.error, 'danger');
+                emailInput.classList.add('is-invalid');
+                emailInput.classList.remove('is-valid');
+            }
+        })
+        .catch(error => {
+            console.error('Domain check error:', error);
+            showAlert('Failed to check email domain', 'danger');
+        })
+        .finally(() => {
+            this.querySelector('i').className = originalIcon;
+            this.disabled = false;
+        });
+    });
+
+    // Real-time password validation
+    function validatePasswords() {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+
+        // Password strength
+        if (password.length >= 8) {
+            passwordInput.classList.add('is-valid');
+            passwordInput.classList.remove('is-invalid');
+        } else {
+            passwordInput.classList.add('is-invalid');
+            passwordInput.classList.remove('is-valid');
+        }
+
+        // Password confirmation
+        if (confirmPassword && password === confirmPassword) {
+            confirmPasswordInput.classList.add('is-valid');
+            confirmPasswordInput.classList.remove('is-invalid');
+        } else if (confirmPassword) {
+            confirmPasswordInput.classList.add('is-invalid');
+            confirmPasswordInput.classList.remove('is-valid');
+        }
+    }
+
+    passwordInput.addEventListener('input', validatePasswords);
+    confirmPasswordInput.addEventListener('input', validatePasswords);
+
+    // Handle registration form submission
+    registerForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(this);
+        const data = {
+            first_name: formData.get('first_name'),
+            last_name: formData.get('last_name'),
+            email: formData.get('email'),
+            password: formData.get('password')
+        };
+
+        // Validate passwords match
+        if (data.password !== formData.get('confirm_password')) {
+            showAlert('Passwords do not match', 'danger');
+            return;
+        }
+
+        // Show loading state
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creating Account...';
+        submitBtn.disabled = true;
+
+        fetch('/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.message) {
+                showAlert(data.message, 'success');
+
+                if (data.requires_verification) {
+                    document.getElementById('verificationNotice').classList.remove('d-none');
+                    window.pendingVerificationEmail = formData.get('email');
+                }
+
+                if (!data.requires_approval && !data.requires_verification) {
+                    // Can login immediately
+                    setTimeout(() => {
+                        window.location.href = '/login?registered=success';
+                    }, 2000);
+                }
+
+                // Clear form
+                registerForm.reset();
+
+            } else if (data.error) {
+                showAlert(data.error, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Registration error:', error);
+            showAlert('Registration failed. Please try again.', 'danger');
+        })
+        .finally(() => {
+            // Reset button state
+            submitBtn.innerHTML = originalText;
+            submitBtn.disabled = false;
+        });
+    });
+
+    // Auto-check domain when email changes
+    emailInput.addEventListener('blur', function() {
+        if (this.value.trim()) {
+            checkDomainBtn.click();
+        }
+    });
+});
+
+// OAuth Sign-Up
+function signUpWithGoogle() {
+    showLoadingOverlay();
+    window.location.href = '/auth/google';
+}
+
+// Resend verification email
+function resendVerification() {
+    const email = window.pendingVerificationEmail;
+    if (!email) {
+        showAlert('No pending verification email found', 'warning');
+        return;
+    }
+
+    fetch('/resend-verification', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email: email })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.message) {
+            showAlert(data.message, 'success');
+        } else if (data.error) {
+            showAlert(data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Resend verification error:', error);
+        showAlert('Failed to resend verification email', 'danger');
+    });
+}
+
+function showLoadingOverlay() {
+    const overlay = document.createElement('div');
+    overlay.id = 'loadingOverlay';
+    overlay.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center h-100">
+            <div class="text-center text-white">
+                <div class="spinner-border mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Redirecting to Google...</p>
+            </div>
+        </div>
+    `;
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        display: flex;
+    `;
+    document.body.appendChild(overlay);
+}
+
+function showAlert(message, type) {
+    const alertContainer = document.getElementById('alertContainer');
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    alertContainer.appendChild(alert);
+
+    // Auto-remove alert after 5 seconds
+    setTimeout(() => {
+        if (alert.parentNode) {
+            alert.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

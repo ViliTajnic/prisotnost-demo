@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}{{ error }} - Time Management System{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-body text-center py-5">
+                <div class="mb-4">
+                    <i class="fas fa-exclamation-triangle fa-5x text-warning"></i>
+                </div>
+
+                <h2 class="card-title text-danger mb-3">{{ error or 'Error' }}</h2>
+
+                <p class="card-text lead mb-4">{{ message }}</p>
+
+                <div class="d-grid gap-2 d-md-block">
+                    <a href="/login" class="btn btn-primary">
+                        <i class="fas fa-sign-in-alt me-2"></i>Back to Login
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary">
+                        <i class="fas fa-home me-2"></i>Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

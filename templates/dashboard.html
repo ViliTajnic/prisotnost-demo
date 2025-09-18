@@ -1,0 +1,440 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Time Management System{% endblock %}
+
+{% block content %}
+<!-- Dashboard Header -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center">
+            <h1>
+                <i class="fas fa-tachometer-alt me-2"></i>Dashboard
+                <small class="text-muted">Welcome back, {{ current_user.first_name }}!</small>
+            </h1>
+            <div>
+                <button class="btn btn-primary me-2" onclick="toggleTimeClock()">
+                    <i class="fas fa-clock me-1"></i>Time Clock
+                </button>
+                <div class="btn-group">
+                    <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-calendar me-1"></i>This Week
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" onclick="changePeriod('today')">Today</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changePeriod('week')">This Week</a></li>
+                        <li><a class="dropdown-item" href="#" onclick="changePeriod('month')">This Month</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Hours Today</h6>
+                        <h3 class="mb-0" id="hoursToday">0.0</h3>
+                        <small class="opacity-75">Goal: 8.0 hours</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">This Week</h6>
+                        <h3 class="mb-0" id="hoursWeek">0.0</h3>
+                        <small class="opacity-75">Regular + Overtime</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-calendar-week fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Overtime</h6>
+                        <h3 class="mb-0" id="overtimeWeek">0.0</h3>
+                        <small class="opacity-75">This week</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-plus-circle fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Current Status</h6>
+                        <h3 class="mb-0" id="currentStatus">Clocked Out</h3>
+                        <small class="opacity-75" id="statusTime">--:--</small>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="fas fa-user-clock fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Content Row -->
+<div class="row g-4">
+    <!-- Time Chart -->
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Weekly Hours Overview</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-primary active" onclick="switchChart('hours')">Hours</button>
+                    <button class="btn btn-outline-primary" onclick="switchChart('projects')">Projects</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="timeChart" height="100"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="recentActivity">
+                    <div class="list-group-item text-center text-muted py-4">
+                        <i class="fas fa-spinner fa-spin"></i> Loading...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Dashboard Sections -->
+<div class="row g-4 mt-1">
+    <!-- Upcoming Schedule -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-calendar-check me-2"></i>Upcoming Schedule
+                    <a href="{{ url_for('schedule') }}" class="btn btn-sm btn-outline-primary float-end">View All</a>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="upcomingSchedule">
+                    <div class="text-center text-muted py-3">
+                        <i class="fas fa-spinner fa-spin"></i> Loading schedule...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Time Breakdown -->
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-project-diagram me-2"></i>Project Time (This Week)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="projectChart" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Team Dashboard (Manager/Admin only) -->
+{% if current_user.role in ['admin', 'manager'] %}
+<div class="row g-4 mt-1">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-users me-2"></i>Team Overview
+                    <span class="badge bg-secondary">{{ current_user.role.title() }}</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-primary" id="teamOnline">0</h4>
+                        <small class="text-muted">Currently Online</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-success" id="teamScheduled">0</h4>
+                        <small class="text-muted">Scheduled Today</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-warning" id="teamOvertime">0</h4>
+                        <small class="text-muted">Overtime This Week</small>
+                    </div>
+                    <div class="col-md-3 text-center">
+                        <h4 class="text-info" id="teamRequests">0</h4>
+                        <small class="text-muted">Pending Requests</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let timeChart, projectChart;
+let currentPeriod = 'week';
+
+document.addEventListener('DOMContentLoaded', function() {
+    initializeCharts();
+    loadDashboardData();
+
+    // Refresh data every 30 seconds
+    setInterval(loadDashboardData, 30000);
+});
+
+function initializeCharts() {
+    // Time Chart
+    const timeCtx = document.getElementById('timeChart').getContext('2d');
+    timeChart = new Chart(timeCtx, {
+        type: 'line',
+        data: {
+            labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            datasets: [{
+                label: 'Regular Hours',
+                data: [8, 8.5, 7.5, 8, 9, 0, 0],
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                tension: 0.4
+            }, {
+                label: 'Overtime Hours',
+                data: [0, 0.5, 0, 0, 1, 0, 0],
+                borderColor: 'rgb(255, 159, 64)',
+                backgroundColor: 'rgba(255, 159, 64, 0.1)',
+                tension: 0.4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 12
+                }
+            }
+        }
+    });
+
+    // Project Chart
+    const projectCtx = document.getElementById('projectChart').getContext('2d');
+    projectChart = new Chart(projectCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Project A', 'Project B', 'Internal', 'Training'],
+            datasets: [{
+                data: [30, 25, 35, 10],
+                backgroundColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)',
+                    'rgb(75, 192, 192)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+}
+
+function loadDashboardData() {
+    const token = localStorage.getItem('access_token');
+
+    // Load current status
+    fetch('/api/current-status', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateCurrentStatus(data);
+    })
+    .catch(error => console.error('Error loading status:', error));
+
+    // Load weekly summary
+    fetch('/api/weekly-summary', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        updateWeeklySummary(data);
+    })
+    .catch(error => console.error('Error loading weekly summary:', error));
+
+    // Load recent activity
+    loadRecentActivity();
+
+    // Load team data for managers/admins
+    {% if current_user.role in ['admin', 'manager'] %}
+    loadTeamData();
+    {% endif %}
+}
+
+function updateCurrentStatus(data) {
+    const statusElement = document.getElementById('currentStatus');
+    const statusTimeElement = document.getElementById('statusTime');
+
+    if (data.status === 'clocked_in') {
+        statusElement.textContent = 'Clocked In';
+        statusElement.parentElement.className = 'card bg-success text-white';
+
+        const clockInTime = new Date(data.clock_in_time);
+        const now = new Date();
+        const diff = Math.floor((now - clockInTime) / 1000 / 60); // minutes
+        const hours = Math.floor(diff / 60);
+        const minutes = diff % 60;
+        statusTimeElement.textContent = `${hours}h ${minutes}m`;
+
+        // Update today's hours
+        document.getElementById('hoursToday').textContent = (data.current_hours || 0).toFixed(1);
+    } else {
+        statusElement.textContent = 'Clocked Out';
+        statusElement.parentElement.className = 'card bg-secondary text-white';
+        statusTimeElement.textContent = '--:--';
+    }
+}
+
+function updateWeeklySummary(data) {
+    document.getElementById('hoursWeek').textContent = (data.total_hours || 0).toFixed(1);
+    document.getElementById('overtimeWeek').textContent = (data.overtime_hours || 0).toFixed(1);
+
+    // Update chart with weekly data
+    if (data.daily_hours && Array.isArray(data.daily_hours)) {
+        const dailyHours = data.daily_hours.map(day => day.hours || 0);
+        const overtimeHours = data.daily_hours.map(day => day.overtime || 0);
+
+        timeChart.data.datasets[0].data = dailyHours;
+        timeChart.data.datasets[1].data = overtimeHours;
+        timeChart.update();
+    } else {
+        // Fallback for simpler API response - show zeros for 7 days
+        timeChart.data.datasets[0].data = [0, 0, 0, 0, 0, 0, 0];
+        timeChart.data.datasets[1].data = [0, 0, 0, 0, 0, 0, 0];
+        timeChart.update();
+    }
+}
+
+function loadRecentActivity() {
+    const token = localStorage.getItem('access_token');
+
+    fetch('/api/time-entries?per_page=5', {
+        headers: {
+            'Authorization': 'Bearer ' + token
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const container = document.getElementById('recentActivity');
+        container.innerHTML = '';
+
+        if (data.entries && data.entries.length > 0) {
+            data.entries.forEach(entry => {
+                const item = document.createElement('div');
+                item.className = 'list-group-item';
+
+                const clockIn = new Date(entry.clock_in_time);
+                const clockOut = entry.clock_out_time ? new Date(entry.clock_out_time) : null;
+
+                item.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${clockIn.toLocaleDateString()}</h6>
+                            <p class="mb-1">
+                                <i class="fas fa-sign-in-alt text-success me-1"></i>
+                                ${clockIn.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                ${clockOut ? `
+                                    <i class="fas fa-sign-out-alt text-danger ms-2 me-1"></i>
+                                    ${clockOut.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                ` : '<span class="badge bg-primary ms-2">Active</span>'}
+                            </p>
+                            ${entry.project_name ? `<small class="text-muted">${entry.project_name}</small>` : ''}
+                        </div>
+                        <span class="badge bg-light text-dark">${entry.total_hours ? entry.total_hours.toFixed(1) + 'h' : 'Active'}</span>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        } else {
+            container.innerHTML = '<div class="text-center text-muted py-3">No recent activity</div>';
+        }
+    })
+    .catch(error => {
+        console.error('Error loading recent activity:', error);
+        document.getElementById('recentActivity').innerHTML =
+            '<div class="text-center text-danger py-3">Failed to load activity</div>';
+    });
+}
+
+{% if current_user.role in ['admin', 'manager'] %}
+function loadTeamData() {
+    // Placeholder team data - would be loaded from API
+    document.getElementById('teamOnline').textContent = '5';
+    document.getElementById('teamScheduled').textContent = '12';
+    document.getElementById('teamOvertime').textContent = '3';
+    document.getElementById('teamRequests').textContent = '2';
+}
+{% endif %}
+
+function changePeriod(period) {
+    currentPeriod = period;
+    loadDashboardData();
+}
+
+function switchChart(type) {
+    // Update active button
+    document.querySelectorAll('.btn-group button').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+
+    // Switch chart data based on type
+    if (type === 'projects') {
+        // Show project-based data
+    } else {
+        // Show hours-based data
+    }
+}
+</script>
+{% endblock %}
